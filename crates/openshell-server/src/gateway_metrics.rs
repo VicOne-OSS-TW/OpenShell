@@ -37,6 +37,10 @@ pub const MUTATION_LOCK_TIMEOUTS_TOTAL: &str = "openshell_server_mutation_lock_t
 pub const MUTATION_LOCK_ERRORS_TOTAL: &str = "openshell_server_mutation_lock_errors_total";
 pub const PROVISIONING_DEADLINE_SKIPS_TOTAL: &str =
     "openshell_server_provisioning_deadline_skips_total";
+pub const SUPERVISOR_SESSION_REDIRECTS_TOTAL: &str =
+    "openshell_server_supervisor_session_redirects_total";
+pub const SUPERVISOR_SESSION_OFF_RING_ADMISSIONS_TOTAL: &str =
+    "openshell_server_supervisor_session_off_ring_admissions_total";
 // Histograms (explicit buckets, see BUCKETED_HISTOGRAMS)
 pub const RELAY_CLAIM_DURATION_SECONDS: &str = "openshell_server_relay_claim_duration_seconds";
 pub const PEER_REQUEST_DURATION_SECONDS: &str = "openshell_server_peer_request_duration_seconds";
@@ -123,6 +127,27 @@ impl RelayRejection {
         match self {
             Self::ReplicaCapacity => "replica_capacity",
             Self::SandboxCapacity => "sandbox_capacity",
+        }
+    }
+}
+
+/// Event that sent a supervisor session redirect: a supervisor connecting, or this replica
+/// shutting down. A stopping replica's connect-time redirects count as `Connect`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RedirectReason {
+    /// `ConnectSupervisor` answered the hello with a redirect instead of accepting the session.
+    Connect,
+    /// A stopping replica queued a redirect on an established session.
+    Shutdown,
+}
+
+impl RedirectReason {
+    pub const ALL: [Self; 2] = [Self::Connect, Self::Shutdown];
+
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Connect => "connect",
+            Self::Shutdown => "shutdown",
         }
     }
 }
@@ -288,6 +313,16 @@ pub fn describe_and_initialize(relay: RelayCapacity, mutation_lock_connections: 
         "Pending relay channels dropped because the supervisor did not connect back in time."
     );
     describe_counter!(
+        SUPERVISOR_SESSION_REDIRECTS_TOTAL,
+        Unit::Count,
+        "Supervisor sessions redirected to the ring-preferred replica, counted when the redirect is sent at connect or queued at shutdown."
+    );
+    describe_counter!(
+        SUPERVISOR_SESSION_OFF_RING_ADMISSIONS_TOTAL,
+        Unit::Count,
+        "Redirected supervisor sessions admitted although this replica's ring names another owner for the sandbox."
+    );
+    describe_counter!(
         MUTATION_LOCK_TIMEOUTS_TOTAL,
         Unit::Count,
         "Mutation lock acquisitions that timed out."
@@ -354,6 +389,10 @@ pub fn describe_and_initialize(relay: RelayCapacity, mutation_lock_connections: 
         counter!(RELAY_REJECTED_TOTAL, LABEL_REASON => reason.label()).increment(0);
     }
     counter!(RELAY_EXPIRED_TOTAL).increment(0);
+    for reason in RedirectReason::ALL {
+        counter!(SUPERVISOR_SESSION_REDIRECTS_TOTAL, LABEL_REASON => reason.label()).increment(0);
+    }
+    counter!(SUPERVISOR_SESSION_OFF_RING_ADMISSIONS_TOTAL).increment(0);
     for scope in LockScope::ALL {
         counter!(MUTATION_LOCK_TIMEOUTS_TOTAL, LABEL_SCOPE => scope.label()).increment(0);
         counter!(MUTATION_LOCK_ERRORS_TOTAL, LABEL_SCOPE => scope.label()).increment(0);
@@ -435,6 +474,18 @@ impl Drop for GaugeSlot {
 
 pub fn record_relay_rejected(reason: RelayRejection) {
     counter!(RELAY_REJECTED_TOTAL, LABEL_REASON => reason.label()).increment(1);
+}
+
+/// One supervisor session redirect, labeled by the step that sent it: `Connect` once the
+/// redirect is on the response stream, `Shutdown` once it is queued on the session.
+pub fn record_session_redirect(reason: RedirectReason) {
+    counter!(SUPERVISOR_SESSION_REDIRECTS_TOTAL, LABEL_REASON => reason.label()).increment(1);
+}
+
+/// A redirected supervisor session was admitted although this replica's ring names another
+/// owner for its sandbox. Recorded only after the session is accepted.
+pub fn record_off_ring_admission() {
+    counter!(SUPERVISOR_SESSION_OFF_RING_ADMISSIONS_TOTAL).increment(1);
 }
 
 /// `count` pending relays were dropped unclaimed (late claim or reaper).
@@ -682,6 +733,18 @@ mod tests {
             ),
             (
                 "openshell_server_provisioning_deadline_skips_total{overdue=\"true\"}",
+                0,
+            ),
+            (
+                "openshell_server_supervisor_session_redirects_total{reason=\"connect\"}",
+                0,
+            ),
+            (
+                "openshell_server_supervisor_session_redirects_total{reason=\"shutdown\"}",
+                0,
+            ),
+            (
+                "openshell_server_supervisor_session_off_ring_admissions_total",
                 0,
             ),
         ] {
