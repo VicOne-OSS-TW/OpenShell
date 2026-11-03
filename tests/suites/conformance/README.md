@@ -12,6 +12,7 @@ Each file in `tests/` is one suite.
 | `persistent-workspace` | Files in `/sandbox` survive stop and start |
 | `policy-advisor` | `policy.local` accepts a proposed rule; a denied address or hostname yields one draft rule |
 | `file-transfer` | `sandbox upload` and `download`: round trips, `.gitignore` filtering, workspace-escape and option-looking names |
+| `create-upload` | `sandbox create --upload`: directory basename, multiple uploads, single file |
 
 `smoke` is the smallest end-to-end check that the runner can run a real test in a
 tmachine environment on CI. The other suites are ports of the old
