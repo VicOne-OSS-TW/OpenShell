@@ -286,8 +286,8 @@ service.
   values never appear in a runner command. Values are taken literally, without
   quoting.
 - **Fixture.** Put the service's fixture in a support crate under
-  `tests/support/<service>`, so any suite can depend on it, or reuse the
-  existing one. It defines the variable names as constants and a
+  `tests/support/<service>`, named `<service>-support`, so any suite can
+  depend on it, or reuse the existing one. It defines the variable names as constants and a
   `<Service>Context::new(cx)` that reads them, waits for the service, and
   wraps the testkit `Context`. Each test calls it on its first line.
   Nextest runs each test in its own process, so the fixture builds its
@@ -526,8 +526,9 @@ guest setup. `tests/tmachine/artifacts.nix` keeps the follow-up exclusions expli
 the same filter for the generated inventory, so excluded binaries cannot appear
 as false passes or silently re-enter the archive.
 
-The Podman driver suite (`tests/suites/drivers/podman`, package
-`podman-driver`) compares OpenShell and direct Podman user-namespace mappings.
+Driver suites live in `tests/suites/drivers/<driver>`, with the package named
+after the driver. The Podman driver suite (`tests/suites/drivers/podman`)
+compares OpenShell and direct Podman user-namespace mappings.
 Each `fedora-podman-{rootful,rootless}-userns-<mode>` environment configures
 the gateway with one mode (`default`, `auto`, `keep-id` or `private`); only the
 `binaries` installer applies it:
@@ -535,7 +536,7 @@ the gateway with one mode (`default`, `auto`, `keep-id` or `private`); only the
 ```shell
 nix run .#openshell-test-runner -- \
   --environment fedora-podman-rootless-userns-keep-id --installer binaries \
-  --gateway tmachine --family drivers --package podman-driver
+  --gateway tmachine --family drivers --package podman
 ```
 
 The `oci-image` feature suite (`tests/suites/features/oci-image`) checks OCI

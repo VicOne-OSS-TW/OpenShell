@@ -60,7 +60,7 @@ impl Engine {
         let command: Vec<String> = command.into_iter().map(Into::into).collect();
         testkit::ensure!(
             !command.is_empty(),
-            "{ENGINE_ENV} is not set; this suite needs the gateway's container engine, such as docker, podman or `sudo -n podman` (see the container-engine crate docs)"
+            "{ENGINE_ENV} is not set; this suite needs the gateway's container engine, such as docker, podman or `sudo -n podman` (see the container-engine-support crate docs)"
         );
         Ok(Self {
             command,

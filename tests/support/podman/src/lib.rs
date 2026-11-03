@@ -19,11 +19,11 @@
 //! missing or unknown value fails the test; it never skips it.
 //!
 //! [`reference_uid_map`] runs a container with the same mode through Podman
-//! directly, with the engine from the `container-engine` crate, so tests
+//! directly, with the engine from the `container-engine-support` crate, so tests
 //! compare `OpenShell` with Podman's own behavior rather than with a mapping
 //! baked into the test.
 
-use container_engine::Engine;
+use container_engine_support::Engine;
 use testkit::{Error, Result, ResultExt as _};
 
 pub const USERNS_ENV: &str = "OPENSHELL_TEST_PODMAN_USERNS";
@@ -45,7 +45,7 @@ impl Userns {
         let value = std::env::var(USERNS_ENV).unwrap_or_default();
         testkit::ensure!(
             !value.is_empty(),
-            "{USERNS_ENV} is not set; this suite needs the gateway's Podman user-namespace mode (see the podman crate docs)"
+            "{USERNS_ENV} is not set; this suite needs the gateway's Podman user-namespace mode (see the podman-support crate docs)"
         );
         Self::parse(&value)
     }

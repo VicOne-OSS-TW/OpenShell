@@ -4,13 +4,13 @@
 //! OCI image behavior shared by the Docker and Podman compute drivers.
 //!
 //! Each test builds a small image on `testkit::base_image()` with the
-//! gateway's container engine (see the `container-engine` crate), creates a
+//! gateway's container engine (see the `container-engine-support` crate), creates a
 //! sandbox from it through the CLI, and checks the process identity,
 //! privileges, workspace, and image content seen by both the sandbox main
 //! process and `sandbox exec`. Some tests also inspect the containers the
 //! driver created, through the same engine.
 
-use container_engine::{Engine, Image};
+use container_engine_support::{Engine, Image};
 use serde_json::Value;
 use testkit::sdk::DeleteOptions;
 use testkit::{Context, DELETE_TIMEOUT, Error, Result, ResultExt as _};

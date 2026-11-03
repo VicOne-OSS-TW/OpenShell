@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [package]
-name = "container-engine"
+name = "container-engine-support"
 description = "Access to the container engine behind a Docker or Podman gateway, for test suites"
 version = "0.0.0"
 edition = "2024"

@@ -4,12 +4,12 @@
 //! Podman driver user namespaces.
 //!
 //! The environment configures the gateway with one user-namespace mode and
-//! publishes it (see the `podman` support crate). The test compares a
+//! publishes it (see the `podman-support` crate). The test compares a
 //! sandbox's UID map with the one Podman itself gives a container in the same
 //! mode, so it doesn't bake a particular Podman mapping into the test.
 
-use container_engine::Engine;
-use podman::{Userns, normalize_uid_map, reference_uid_map};
+use container_engine_support::Engine;
+use podman_support::{Userns, normalize_uid_map, reference_uid_map};
 use testkit::{Context, Error, ResultExt as _};
 
 const WORKSPACE_OK: &str = "podman-userns-workspace-ok";

@@ -407,7 +407,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "container-engine"
+name = "container-engine-support"
 version = "0.0.0"
 dependencies = [
  "openshell-testkit",
@@ -1496,21 +1496,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "keycloak"
+name = "keycloak-provider-refresh"
+version = "0.0.0"
+dependencies = [
+ "keycloak-support",
+ "openshell-testkit",
+ "tempfile",
+]
+
+[[package]]
+name = "keycloak-support"
 version = "0.0.0"
 dependencies = [
  "openshell-testkit",
  "serde_json",
  "tokio",
-]
-
-[[package]]
-name = "keycloak-provider-refresh"
-version = "0.0.0"
-dependencies = [
- "keycloak",
- "openshell-testkit",
- "tempfile",
 ]
 
 [[package]]
@@ -1879,7 +1879,7 @@ dependencies = [
 name = "oci-image"
 version = "0.0.0"
 dependencies = [
- "container-engine",
+ "container-engine-support",
  "openshell-testkit",
  "serde_json",
  "tempfile",

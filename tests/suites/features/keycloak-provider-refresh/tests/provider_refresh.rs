@@ -8,7 +8,7 @@
 
 use std::io::Write as _;
 
-use keycloak::KeycloakContext;
+use keycloak_support::KeycloakContext;
 use testkit::{CliOutput, Context, Error, ResultExt as _};
 
 const CREDENTIAL_KEY: &str = "KEYCLOAK_ACCESS_TOKEN";
@@ -131,7 +131,7 @@ fn combined(output: &CliOutput) -> String {
 
 fn write_profile(
     profile_id: &str,
-    keycloak: &keycloak::Keycloak,
+    keycloak: &keycloak_support::Keycloak,
 ) -> testkit::Result<tempfile::NamedTempFile> {
     let issuer_token_url = keycloak.token_endpoint();
     let profile = format!(
