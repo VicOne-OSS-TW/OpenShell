@@ -12,8 +12,7 @@
 
 use container_engine_support::{Engine, Image};
 use serde_json::Value;
-use testkit::sdk::DeleteOptions;
-use testkit::{Context, DELETE_TIMEOUT, Error, Result, ResultExt as _};
+use testkit::{Context, Error, Result, ResultExt as _};
 
 /// Sandbox condition reason for an image `WORKDIR` the sandbox identity
 /// cannot use.
@@ -261,87 +260,52 @@ USER app
     .await
 }
 
-/// What a test uses: the context, the gateway's container engine, and the
-/// sandboxes it created through the CLI.
+/// What a test uses: the context and the gateway's container engine.
 struct Oci<'a> {
     cx: &'a Context,
     engine: Engine,
     base_image: String,
-    sandboxes: Vec<String>,
 }
 
-/// Run `test`, then delete its sandboxes and the images it built.
-async fn run(cx: &Context, test: impl AsyncFnOnce(&mut Oci<'_>) -> Result) -> Result {
-    let mut oci = Oci {
+/// Run `test` with the gateway's container engine.
+async fn run(cx: &Context, test: impl AsyncFnOnce(&Oci<'_>) -> Result) -> Result {
+    let oci = Oci {
         cx,
         engine: Engine::from_env()?,
         base_image: testkit::base_image(),
-        sandboxes: Vec::new(),
     };
-    let result = test(&mut oci).await;
-    // Delete the sandboxes before their images, since image removal isn't
-    // forced; testkit's own sandbox cleanup runs too late for that. A panic
-    // skips this and leaks the images, but their tags are unique to the run.
-    let mut failures = oci.delete_sandboxes().await;
-    failures.extend(oci.engine.remove_images().await);
-    match (result, failures.is_empty()) {
-        (result, true) => result,
-        (Ok(()), false) => Err(Error::msg(format!(
-            "cleanup failed: {}",
-            failures.join("; ")
-        ))),
-        (Err(error), false) => Err(Error::msg(format!(
-            "{error}\ncleanup also failed: {}",
-            failures.join("; ")
-        ))),
-    }
+    test(&oci).await
 }
 
 impl Oci<'_> {
-    /// Build `containerfile` with a tag unique to this run.
-    async fn build_image(&mut self, name: &str, containerfile: &str) -> Result<Image> {
+    /// Build `containerfile` with a tag unique to this run, and remove the
+    /// image when the test ends. Cleanup runs last registered first, so the
+    /// sandboxes created from the image are deleted before it is removed.
+    async fn build_image(&self, name: &str, containerfile: &str) -> Result<Image> {
         let tag = format!("localhost/openshell-test-oci-{name}:{}", self.cx.run_id());
-        self.engine.build_image(&tag, containerfile).await
+        self.engine.build_image(&tag, containerfile).await?;
+        let (engine, built) = (self.engine.clone(), tag.clone());
+        self.cx
+            .on_cleanup(format!("remove image {tag}"), async move || {
+                engine.remove_image(&built).await
+            });
+        self.engine.image(&tag).await
     }
 
     /// Name a sandbox for this test and register it for cleanup. Sandbox
     /// names are limited to 19 characters on some drivers, so keep `short`
     /// to a few characters.
-    fn track(&mut self, short: &str) -> String {
+    fn track(&self, short: &str) -> String {
         let name = self.cx.name(short);
         self.cx.track(&name);
-        self.sandboxes.push(name.clone());
         name
-    }
-
-    /// Delete the sandboxes this test created and wait until they are gone.
-    async fn delete_sandboxes(&self) -> Vec<String> {
-        let client = self.cx.client();
-        let mut failures = Vec::new();
-        for name in &self.sandboxes {
-            let deleted = async {
-                client
-                    .delete_sandbox(
-                        name,
-                        DeleteOptions {
-                            allow_missing: true,
-                        },
-                    )
-                    .await?;
-                client.wait_deleted(name, DELETE_TIMEOUT, None).await
-            };
-            if let Err(error) = deleted.await {
-                failures.push(format!("delete sandbox {name}: {}", Error::from(error)));
-            }
-        }
-        failures
     }
 
     /// Create a detached sandbox whose main process runs `checks` and writes
     /// to the workspace, then run the same checks and a write through
     /// `sandbox exec`.
     async fn create_sandbox(
-        &mut self,
+        &self,
         short: &str,
         image: &Image,
         policy: Option<&str>,
