@@ -1,0 +1,72 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Example provider profile. OpenShell does not load it; import it explicitly:
+#   openshell provider profile lint   -f providers/hermes-agent.yaml
+#   openshell provider profile import -f providers/hermes-agent.yaml --global
+#
+# Copy and edit this file rather than importing it unchanged. `binaries` is the
+# least-privilege control that decides which processes may reach the endpoints
+# below, so it has to name the paths in *your* image.
+#
+# Client binaries:   hermes (Hermes Agent, https://github.com/NousResearch/hermes-agent).
+#                    The CLI is a Python entry point, so the binary that opens
+#                    the sockets is the venv interpreter, not the `hermes`
+#                    wrapper. List the *resolved* interpreter path
+#                    (`readlink -f /opt/hermes/.venv/bin/python` inside your
+#                    image); the symlink itself does not match.
+# Reference layout:  the upstream Dockerfile stages its own Python under
+#                    /opt/hermes/tools/python-<version>-linux-x64/bin/python3.x
+#                    and the venv at /opt/hermes/.venv. Pin the exact version
+#                    directory from your image digest. Child processes of a
+#                    listed binary inherit the match, so curl/git started by
+#                    hermes are covered without listing them.
+# Credential scope:  OPENROUTER_API_KEY, sent as a bearer token to the single
+#                    inference endpoint below and nowhere else. Hermes has no
+#                    fixed default provider: with provider "auto" it picks
+#                    OpenRouter when this key is set, and it also needs a model
+#                    (-m, HERMES_INFERENCE_MODEL or model.default in
+#                    config.yaml). If you route inference through your own
+#                    OpenAI-compatible gateway, replace the host and the env
+#                    var with the ones your hermes config.yaml points at.
+# Endpoint access:   openrouter.ai for inference only.
+#
+# Deliberately NOT granted (observed on a default Hermes install, 2026-10/11):
+#   hermes-agent.nousresearch.com  model-catalog refresh and version check
+#   portal.nousresearch.com        Nous Portal guest / connector sign-in
+#   raw.githubusercontent.com      skills, plugin and catalog fetches
+#   openrouter.ai                  (if you use another inference provider)
+# A fresh Hermes install retries these on its own, without any user prompt.
+# Under this profile they are denied and logged; the agent keeps working for
+# inference and for whatever MCP endpoints you add in your sandbox policy.
+# If your deployment wants any of them, add the host to `endpoints` on your
+# copy. The Hermes config keys that stop the retries at the source are
+#   model_catalog.enabled: false
+#   tools.connectors.enabled: false
+#   nous.guest: false
+# so the denied traffic does not pile up in the audit log.
+# Smoke test:        openshell sandbox create --provider <name> -- \
+#                      hermes -z 'reply with OK' --provider openrouter -m <model>
+
+id: hermes-agent
+display_name: Hermes Agent
+description: Hermes Agent (NousResearch) CLI, inference via OpenRouter
+category: agent
+inference_capable: true
+credentials:
+  - name: api_key
+    description: OpenRouter API key used by Hermes Agent for inference
+    env_vars: [OPENROUTER_API_KEY]
+    required: true
+    auth_style: bearer
+    header_name: authorization
+discovery:
+  credentials: [api_key]
+endpoints:
+  - host: openrouter.ai
+    port: 443
+    protocol: rest
+    access: read-write
+    enforcement: enforce
+binaries:
+  - /opt/hermes/tools/python-3.14.9+20261021-linux-x64/bin/python3.14
