@@ -166,7 +166,7 @@ the DEB on Ubuntu with Docker and installs the CLI and gateway RPMs on Fedora wi
 rootful and rootless Podman. These lanes run conformance using the matching runtime
 images. Release Dev, Release, and Pre-release use the same package installers.
 The feature suites (`tests/suites/features`) run the same way, on the
-package installers. The Podman driver suite (`tests/suites/drivers`) and the
+package installers. The Podman driver suite (`tests/suites/drivers/podman`) and the
 `e2e-podman` lane retain the binary installer because they configure its system
 service, local HTTP gateway, and CLI path. The driver suite and `e2e-podman` run
 only in `Branch E2E Checks`. The manual Integration Tests workflow runs the

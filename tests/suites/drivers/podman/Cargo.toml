@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+# Each driver suite is its own workspace, with its own lockfile.
 [package]
 name = "podman"
 description = "Drivers suite: Podman driver behavior, such as user namespaces"
@@ -15,3 +16,5 @@ publish = false
 container-engine-support = { path = "../../../support/container-engine" }
 openshell-testkit = { path = "../../../testkit/testkit" }
 podman-support = { path = "../../../support/podman" }
+
+[workspace]
